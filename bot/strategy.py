@@ -196,6 +196,29 @@ class OptionAStrategy:
 
         return None
 
+    def check_signal_realtime(self, df: pd.DataFrame, current_candle: dict) -> Optional[Signal]:
+        """
+        실시간 시그널 체크 (현재 진행 중인 캔들 포함)
+        - df: 마감된 캔들 데이터
+        - current_candle: 현재 진행 중인 캔들 {open, high, low, close, volume, timestamp}
+        """
+        if len(df) < 200:
+            return None
+
+        # 현재 캔들을 DataFrame에 추가
+        df = df.copy()
+        current_row = pd.DataFrame([{
+            "timestamp": pd.to_datetime(current_candle["timestamp"], unit="ms"),
+            "open": current_candle["open"],
+            "high": current_candle["high"],
+            "low": current_candle["low"],
+            "close": current_candle["close"],
+            "volume": current_candle["volume"],
+        }])
+        df = pd.concat([df, current_row], ignore_index=True)
+
+        return self.check_signal(df)
+
     def get_market_context(self, df: pd.DataFrame) -> dict:
         """시장 상황 분석"""
         df = self.add_indicators(df)

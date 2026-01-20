@@ -176,15 +176,22 @@ class BotSimulator:
 
         del self.positions[symbol]
 
-    def run_simulation(self, symbol: str, df: pd.DataFrame):
-        """시뮬레이션 실행"""
-        print(f"\n  🚀 {symbol} 시뮬레이션 시작...")
+    def run_simulation(self, symbol: str, df: pd.DataFrame, realtime_mode: bool = True):
+        """시뮬레이션 실행
+
+        realtime_mode=True: 실시간 체크 (캔들 진행 중에도 시그널 체크)
+        realtime_mode=False: 캔들 마감 시에만 시그널 체크
+        """
+        mode_str = "실시간" if realtime_mode else "캔들마감"
+        print(f"\n  🚀 {symbol} 시뮬레이션 시작... ({mode_str} 모드)")
 
         # 지표 추가
         df = self.strategy.add_indicators(df)
         df = df.dropna().reset_index(drop=True)
 
         lookback = 300  # 봇이 사용하는 캔들 수
+        cooldown_candles = 20  # 진입 후 쿨다운 (15분 * 20 = 5시간)
+        last_entry_idx = -cooldown_candles
 
         for i in range(lookback, len(df)):
             current_candle = df.iloc[i]
@@ -205,9 +212,30 @@ class BotSimulator:
 
             # 신규 진입 체크 (포지션 없을 때만)
             if symbol not in self.positions and len(self.positions) < self.config.max_positions:
-                # 봇과 동일하게 최근 데이터로 시그널 체크
-                window_df = df.iloc[i-lookback+1:i+1].copy()
-                signal = self.strategy.check_signal(window_df)
+                # 쿨다운 체크
+                if i - last_entry_idx < cooldown_candles:
+                    self.equity_curve.append(self.balance)
+                    continue
+
+                # 실시간 모드: 현재 캔들의 고가/저가로 BB 터치 체크
+                if realtime_mode:
+                    # 마감된 캔들들로 지표 계산
+                    window_df = df.iloc[i-lookback+1:i].copy()
+
+                    # 현재 캔들을 '진행 중인 캔들'로 처리
+                    current_candle_dict = {
+                        "timestamp": int(current_candle["timestamp"].timestamp() * 1000),
+                        "open": current_candle["open"],
+                        "high": current_candle["high"],
+                        "low": current_candle["low"],
+                        "close": current_candle["close"],
+                        "volume": current_candle["volume"],
+                    }
+                    signal = self.strategy.check_signal_realtime(window_df, current_candle_dict)
+                else:
+                    # 캔들 마감 모드: 기존 방식
+                    window_df = df.iloc[i-lookback+1:i+1].copy()
+                    signal = self.strategy.check_signal(window_df)
 
                 if signal:
                     quantity = self.calculate_position_size(signal.entry_price, signal.stop_loss)
@@ -224,6 +252,7 @@ class BotSimulator:
                             entry_index=i
                         )
                         self.positions[symbol] = pos
+                        last_entry_idx = i
 
             # 자본금 기록
             self.equity_curve.append(self.balance)
@@ -312,8 +341,13 @@ def main():
                         help="테스트 기간 (일)")
     parser.add_argument("--balance", type=float, default=10000,
                         help="초기 자본금")
+    parser.add_argument("--candle-close", action="store_true",
+                        help="캔들 마감 시에만 시그널 체크 (기본: 실시간)")
 
     args = parser.parse_args()
+
+    realtime_mode = not args.candle_close
+    mode_str = "실시간" if realtime_mode else "캔들마감"
 
     print("\n" + "=" * 70)
     print("  🤖 봇 시뮬레이션 - 과거 데이터로 실제 봇 로직 검증")
@@ -321,6 +355,7 @@ def main():
     print(f"  심볼: {args.symbols}")
     print(f"  기간: {args.days}일")
     print(f"  초기 자본: ${args.balance:,.2f}")
+    print(f"  모드: {mode_str}")
     print("=" * 70)
 
     # 설정
@@ -336,7 +371,7 @@ def main():
         df = simulator.download_data(symbol.strip(), args.days)
 
         # 시뮬레이션 실행
-        simulator.run_simulation(symbol.strip(), df)
+        simulator.run_simulation(symbol.strip(), df, realtime_mode)
 
         # 결과 출력
         simulator.print_results()

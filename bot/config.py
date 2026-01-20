@@ -17,7 +17,7 @@ class TradingConfig:
     # 거래 설정
     symbols: List[str] = None
     timeframe: str = "15m"
-    leverage: int = 5
+    leverage: int = 20  # 레버리지 20배
 
     # 자금 관리
     risk_per_trade: float = 0.02  # 거래당 리스크 2%
@@ -33,9 +33,9 @@ class TradingConfig:
     short_rsi_overbought: float = 65
     short_bb_touch_mult: float = 0.99  # BB 상단의 1% 이내
 
-    # TP/SL 설정
-    tp_pct: float = 0.04  # 4% 익절 (레버리지 5x = 20%)
-    sl_atr_mult: float = 3.0  # ATR의 3.0배 손절
+    # TP/SL 설정 (Option 2 - 테스트 결과 최적)
+    tp_pct: float = 0.01  # 1.0% 익절 (레버리지 20x = 20%)
+    sl_atr_mult: float = 1.5  # ATR의 1.5배 손절
 
     # 지표 설정
     rsi_period: int = 14
