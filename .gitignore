@@ -1,0 +1,44 @@
+# 가상환경
+venv/
+.venv/
+env/
+
+# 환경변수 (API 키 보호)
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# 로그
+*.log
+trading_bot.log
+trading_bot.pid
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 테스트/결과
+backtest/results/*.png
+results/
+*.csv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
