@@ -75,7 +75,7 @@ class OptionAStrategy:
 
         return df
 
-    def check_long_entry(self, df: pd.DataFrame) -> Optional[Signal]:
+    def check_long_entry(self, df: pd.DataFrame, symbol: str = None) -> Optional[Signal]:
         """롱 진입 조건 체크"""
         if len(df) < 2:
             return None
@@ -110,8 +110,11 @@ class OptionAStrategy:
             entry_price = last["close"]
             atr = last["atr"]
 
+            # 심볼별 TP 설정 적용
+            tp_pct = self.config.get_symbol_setting(symbol, "tp_pct", self.config.tp_pct) if symbol else self.config.tp_pct
+
             # TP/SL 계산
-            take_profit = entry_price * (1 + self.config.tp_pct)
+            take_profit = entry_price * (1 + tp_pct)
             stop_loss = entry_price - (atr * self.config.sl_atr_mult)
 
             return Signal(
@@ -175,8 +178,8 @@ class OptionAStrategy:
 
         return None
 
-    def check_signal(self, df: pd.DataFrame) -> Optional[Signal]:
-        """시그널 체크 (롱/숏)"""
+    def check_signal(self, df: pd.DataFrame, symbol: str = None) -> Optional[Signal]:
+        """시그널 체크 (롱/숏) - 심볼별 설정 적용"""
         df = self.add_indicators(df)
 
         # NaN 제거
@@ -184,23 +187,28 @@ class OptionAStrategy:
         if len(df) < 2:
             return None
 
+        # 심볼별 long_only 설정 확인
+        long_only = self.config.get_symbol_setting(symbol, "long_only", False) if symbol else False
+
         # 롱 체크
-        long_signal = self.check_long_entry(df)
+        long_signal = self.check_long_entry(df, symbol)
         if long_signal:
             return long_signal
 
-        # 숏 체크
-        short_signal = self.check_short_entry(df)
-        if short_signal:
-            return short_signal
+        # 숏 체크 (long_only가 아닌 경우에만)
+        if not long_only:
+            short_signal = self.check_short_entry(df)
+            if short_signal:
+                return short_signal
 
         return None
 
-    def check_signal_realtime(self, df: pd.DataFrame, current_candle: dict) -> Optional[Signal]:
+    def check_signal_realtime(self, df: pd.DataFrame, current_candle: dict, symbol: str = None) -> Optional[Signal]:
         """
         실시간 시그널 체크 (현재 진행 중인 캔들 포함)
         - df: 마감된 캔들 데이터
         - current_candle: 현재 진행 중인 캔들 {open, high, low, close, volume, timestamp}
+        - symbol: 심볼 (심볼별 설정 적용)
         """
         if len(df) < 200:
             return None
@@ -217,7 +225,7 @@ class OptionAStrategy:
         }])
         df = pd.concat([df, current_row], ignore_index=True)
 
-        return self.check_signal(df)
+        return self.check_signal(df, symbol)
 
     def get_market_context(self, df: pd.DataFrame) -> dict:
         """시장 상황 분석"""

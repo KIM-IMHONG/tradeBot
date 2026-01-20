@@ -146,8 +146,8 @@ class WebSocketTradingBot:
             logger.warning(f"  ↳ {symbol}: 데이터 부족")
             return
 
-        # 시그널 체크
-        signal_result = self.strategy.check_signal(df)
+        # 시그널 체크 (심볼별 설정 적용)
+        signal_result = self.strategy.check_signal(df, symbol)
 
         if signal_result:
             logger.info(
@@ -207,8 +207,8 @@ class WebSocketTradingBot:
         df = pd.DataFrame(klines)
         df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
 
-        # 실시간 시그널 체크
-        signal_result = self.strategy.check_signal_realtime(df, current_candle)
+        # 실시간 시그널 체크 (심볼별 설정 적용)
+        signal_result = self.strategy.check_signal_realtime(df, current_candle, symbol)
 
         if signal_result:
             logger.info(

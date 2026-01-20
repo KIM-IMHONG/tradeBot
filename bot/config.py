@@ -33,9 +33,14 @@ class TradingConfig:
     short_rsi_overbought: float = 65
     short_bb_touch_mult: float = 0.99  # BB 상단의 1% 이내
 
-    # TP/SL 설정 (Option 2 - 테스트 결과 최적)
+    # TP/SL 설정 (기본값)
     tp_pct: float = 0.01  # 1.0% 익절 (레버리지 20x = 20%)
     sl_atr_mult: float = 1.5  # ATR의 1.5배 손절
+
+    # 심볼별 설정 (롱 전용 + 커스텀 TP)
+    # BTC: 롱만, TP 0.3% (단기 반등만 먹기)
+    # ETH: 롱+숏, TP 1.0%
+    symbol_settings: dict = None
 
     # 지표 설정
     rsi_period: int = 14
@@ -55,6 +60,22 @@ class TradingConfig:
     def __post_init__(self):
         if self.symbols is None:
             self.symbols = ["BTCUSDT"]
+
+        # 심볼별 설정 초기화
+        if self.symbol_settings is None:
+            self.symbol_settings = {
+                "BTCUSDT": {
+                    "long_only": True,    # 롱만 진입
+                    "tp_pct": 0.003,      # TP 0.3% (레버리지 20x = 6%)
+                },
+                # 다른 심볼은 기본 설정 사용 (롱+숏, TP 1.0%)
+            }
+
+    def get_symbol_setting(self, symbol: str, key: str, default=None):
+        """심볼별 설정 조회"""
+        if symbol in self.symbol_settings:
+            return self.symbol_settings[symbol].get(key, default)
+        return default
 
     @classmethod
     def from_env(cls) -> "TradingConfig":

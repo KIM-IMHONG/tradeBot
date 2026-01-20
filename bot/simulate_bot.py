@@ -231,11 +231,11 @@ class BotSimulator:
                         "close": current_candle["close"],
                         "volume": current_candle["volume"],
                     }
-                    signal = self.strategy.check_signal_realtime(window_df, current_candle_dict)
+                    signal = self.strategy.check_signal_realtime(window_df, current_candle_dict, symbol)
                 else:
                     # 캔들 마감 모드: 기존 방식
                     window_df = df.iloc[i-lookback+1:i+1].copy()
-                    signal = self.strategy.check_signal(window_df)
+                    signal = self.strategy.check_signal(window_df, symbol)
 
                 if signal:
                     quantity = self.calculate_position_size(signal.entry_price, signal.stop_loss)
